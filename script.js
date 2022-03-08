@@ -68,13 +68,22 @@ let questions = [
 let currentQuestion = 0;
 let correctAnswers = 0;
 let submitted = false;
+var AUDIO_SUCCESS = new Audio('audio/plop.mp3');
+var AUDIO_FAIL = new Audio('audio/boo.mp3');
+var AUDIO_TICK = new Audio('audio/tick.mp3');
+var AUDIO_LOSER = new Audio('audio/loser.mp3');
+AUDIO_SUCCESS.volume = 0.4;
+AUDIO_FAIL.volume = 0.1;
+AUDIO_TICK.volume = 0.1;
+AUDIO_LOSER.volume = 0.3;
 
 function init() {
     let nrOfQ = document.getElementById('nr-of-q');
+    correctAnswers = 0;
     nrOfQ.innerHTML = '';
     nrOfQ.innerHTML = questions.length;
+    clearInterval(time);
     showQuestion();
-    showTime();
 }
 
 function showQuestion() {
@@ -86,6 +95,7 @@ function showQuestion() {
     let a3 = document.getElementById('answer_3');
     let a4 = document.getElementById('answer_4');
     let percent = currentQuestion / questions.length;
+    showTime();
     percent = Math.round(percent * 100);
     if (currentQuestion >= questions.length) {
         document.getElementById('end-screen').style.display = '';
@@ -94,6 +104,9 @@ function showQuestion() {
         document.getElementById('nr-of-q-endscreen').innerHTML = `${questions.length}`;
         document.getElementById('restart').style = '';
         document.getElementById('next').style = 'display: none';
+        if(correctAnswers < 5) {
+            AUDIO_LOSER.play();
+        }
     } else {
         q.innerHTML = questionHTML(question);
         a1.innerHTML = a1HTML(question);
@@ -104,8 +117,6 @@ function showQuestion() {
         qIndex.innerHTML = currentQuestion + 1;
         document.getElementById('progress-bar').innerHTML = `${percent}%`;
         document.getElementById('progress-bar').style = `width: ${percent}%`;
-        showTime();
-        //timer();
     }
 }
 
@@ -133,18 +144,28 @@ function a4HTML(question) {
     return /*html*/ `${question['answer_4']}`
 }
 
+var time;
+
 function showTime() {
-    var sec = 10; //set time limit
-    var time = setInterval(myTimer, 1000); //every second the method myTimer gets called
-    document.getElementById('timer').style.display = '';
-    function myTimer() {
-        document.getElementById('timer').innerHTML = sec; 
-        sec--; 
-        if (sec == -1) {
-            submitAnswer(`answer_${questions[currentQuestion]['right_answer']}`);
-            clearInterval(time);
-            document.getElementById('timer').style.display = 'none';
+    let sec = 14; //set time limit
+    time = setInterval(myTimer, 1000); //every second the method myTimer gets called
+        
+        function myTimer() {
+            document.getElementById('timer').style.display = '';
+            document.getElementById('timer').innerHTML = sec;
+            sec--;
+            AUDIO_TICK.play();
+            if (sec == -1 || submitted == true) {
+                submitAnswer(`answer_${questions[currentQuestion]['right_answer']}`);
+                clearInterval(time);
+                document.getElementById('timer').style.display = 'none';
+            }
         }
+}
+
+function clearTimer() {
+    if(submitted == true) {
+    clearInterval(time);
     }
 }
 
@@ -153,17 +174,25 @@ function submitAnswer(selection) {
     let selectedAnswerNumber = selection.slice(-1); // select last digit of 'selection'
     let idOfRightAnswer = `answer_${question['right_answer']}`;
     document.getElementById('timer').style.display = 'none';
-    if (selectedAnswerNumber == question['right_answer']) { // check, if last digit of 'selection' is equalt to 'question' at the key 'right_answer'
-        document.getElementById(selection).parentNode.classList.add('bg-success');
-        rightAnswer();
-    } else {
-        document.getElementById(selection).parentNode.classList.add('bg-danger');
-        document.getElementById(idOfRightAnswer).parentNode.classList.add('bg-success');
+    if (submitted == false) {
+        if (selectedAnswerNumber == question['right_answer']) { // check, if last digit of 'selection' is equalt to 'question' at the key 'right_answer'
+            AUDIO_SUCCESS.play();
+            document.getElementById(selection).parentNode.classList.add('bg-success');
+            rightAnswer();
+            submitted = true;
+        } else {
+            AUDIO_FAIL.play();
+            document.getElementById(selection).parentNode.classList.add('bg-danger');
+            document.getElementById(idOfRightAnswer).parentNode.classList.add('bg-success');
+            submitted = true;
+        }
     }
     document.getElementById('next').disabled = false;
 }
 
 function nextQuestion() {
+    clearInterval(time);
+    submitted = false;
     currentQuestion++;
     document.getElementById('next').disabled = true;
     resetAnswerButtons();
@@ -186,12 +215,13 @@ function rightAnswer() {
 }
 
 function restartGame() {
+    clearTimer();
     currentQuestion = 0;
     correctAnswers = 0;
+    submitted = false;
     document.getElementById('end-screen').style.display = 'none';
     document.getElementById('q-body').style.display = '';
     document.getElementById('restart').style.display = 'none';
     document.getElementById('next').style.display = '';
     init();
-    showTime();
 }
